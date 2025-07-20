@@ -1,0 +1,251 @@
+import jsbgym.properties as prp
+from jsbgym.simulation import Simulation
+from jsbgym.visualiser import FigureVisualiser, FlightGearVisualiser, GraphVisualiser
+from jsbgym.aircraft import Aircraft, c172x
+from jsbgym.properties import BoundedProperty, Property
+from typing import Optional, Dict, Union
+import warnings
+
+class SimulationInterface:
+    """
+    An interface allowing for rendering of the simulation and inputting actions to the simulation.
+    It is essentially the Simulation plus rendering   
+    """
+
+    JSBSIM_DT_HZ: int = 60  # JSBSim integration frequency
+    metadata = {
+        "render_modes": ["human", "flightgear", "human_fg", "graph", "graph_fg"],
+        "render_fps": 60,
+    }
+    base_observation_variables = [
+        prp.lat_geod_deg,         # latitude [deg]
+        prp.lng_geoc_deg,         # longitude [deg]
+        prp.altitude_sl_ft,       # altitude MSL [ft]
+        prp.altitude_agl_ft,      # altitude AGL [ft]
+
+        # --- Plane Orientation ---
+        prp.pitch_rad,            # pitch [rad]
+        prp.roll_rad,             # roll [rad]
+        prp.sideslip_deg,         # sideslip [deg]
+
+        # --- Velocities ---
+        prp.ias_kts,              # indicated airspeed [kts]
+        prp.groundspeed_kts,      # groundspeed [ft/s]
+        prp.vertical_speed_fps,    # vertical speed [ft/s]
+
+        # --- Control state ---
+        prp.aileron_left,
+        prp.aileron_right,
+        prp.elevator,
+        prp.rudder,
+        # --- Engine state ---
+        prp.engine_running,
+        prp.throttle,
+        prp.mixture_cmd,
+        prp.oil_pressure_psi,
+        prp.oil_temperature_degF,
+        # --- Autopilot ---
+        prp.ap_hold_straight_and_level,
+        prp.ap_hold_altitude,
+        prp.ap_hold_heading,
+        prp.ap_heading_setpoint,
+        prp.ap_altitude_setpoint,
+    ]
+    default_state_variables = {
+        prp.initial_u_fps: 120,
+        prp.initial_v_fps: 0,
+        prp.initial_w_fps: 0,
+        prp.initial_p_radps: 0,
+        prp.initial_q_radps: 0,
+        prp.initial_r_radps: 0,
+        prp.initial_roc_fpm: 0,
+        prp.initial_heading_deg: 0,
+    }
+    default_initial_conditions = {
+            prp.initial_altitude_ft: 5000,
+            prp.initial_terrain_altitude_ft: 0.00000001,
+            prp.initial_longitude_geoc_deg: -2.3273,
+            prp.initial_latitude_geod_deg: 51.3781,  # corresponds to UoBath
+    }
+
+    default_initial_conditions = default_initial_conditions | default_state_variables
+
+    def __init__(
+        self,
+        aircraft: Aircraft = c172x,
+        initial_conditions: Dict = default_initial_conditions,
+        additional_obervation_properties: list = [],
+        control_agent_interaction_freq: int = 5,
+        render_mode: Optional[str] = None,
+    ):
+        """A Simulation Interface is essentially just a simulation with rendering 
+
+        :param aircraft: Aircraft type, defaults to c172p
+        :type aircraft: Aircraft, optional
+        :param initial_conditions: dictionary of initial conditions. The example is shown in this class. If the 
+        inputed inital conditions are incomplete, it uses the default values, defaults to default_initial_conditions
+        :type initial_conditions: _type_, optional
+        :param control_agent_interaction_freq: How many times a second the control agent can interact, defaults to 5
+        :type control_agent_interaction_freq: int, optional
+        :param render_mode: human_fg, flightgear, graph_fg, human, graph, other, defaults to None
+        :type render_mode: Optional[str], optional
+        :raises ValueError: _description_
+        """
+        if control_agent_interaction_freq > self.JSBSIM_DT_HZ:
+            raise ValueError(
+                "agent interaction frequency must be less than "
+                "or equal to JSBSim integration frequency of "
+                f"{self.JSBSIM_DT_HZ} Hz."
+            )
+        self.sim: Simulation = None
+        self.sim_steps_per_agent_step: int = self.JSBSIM_DT_HZ // control_agent_interaction_freq
+        self.aircraft = aircraft
+        # set visualisation objects
+        self.figure_visualiser: FigureVisualiser = None
+        self.flightgear_visualiser: FlightGearVisualiser = None
+        self.graph_visualiser: GraphVisualiser = None
+        self.step_delay = None
+        self.render_mode = render_mode
+        self.init_conditions = SimulationInterface.default_initial_conditions.copy()
+        # Print initial conditions that the user did not modify
+        self.default_initial_conditions[prp.initial_u_fps] = self.aircraft.get_cruise_speed_fps()
+        user_keys = set(initial_conditions.keys())
+        init_condition_keys = set(SimulationInterface.default_initial_conditions.keys())
+        print(f"Properties that you did not add (resorted to default): {init_condition_keys - user_keys}")
+        print(f"Additional properties you added that defaults did not already have {user_keys - init_condition_keys}")
+        for prop, val in initial_conditions.items():
+            self.init_conditions[prop] = val
+        # Add additional observation properties
+        self.observation_variables = SimulationInterface.base_observation_variables + additional_obervation_properties
+        self.observation_variables = tuple(set(self.observation_variables))
+
+    def step(self, actions: Dict[Union[Property, BoundedProperty], Union[int, float]]):
+        if (
+            self.render_mode == "human"
+            or self.render_mode == "graph"
+            or self.render_mode == "human_fg"
+            or self.render_mode == "graph_fg"
+            or self.render_mode == "flightgear"
+        ):
+            self.render()
+
+        for prop, command in actions.items():
+            self.sim[prop] = command
+
+        # run simulation
+        for _ in range(self.sim_steps_per_agent_step):
+            self.sim.run()
+        
+        return {prop: self.sim[prop] for prop in self.observation_variables}
+
+    def initialize(self) -> Dict[Union[BoundedProperty, Property], Union[float, int]]:
+        if self.sim:
+            self.sim.reinitialise(self.init_conditions)
+        else:
+            self.sim = self._init_new_sim(
+                self.JSBSIM_DT_HZ, self.aircraft, self.init_conditions, self.render_mode in ["flightgear", "human_fg", "graph_fg"]
+            )
+
+        if self.flightgear_visualiser:
+            self.flightgear_visualiser.configure_simulation_output(self.sim)
+        if self.render_mode == "human":
+            self.render()
+        if self.render_mode == "graph":
+            try:
+                self.graph_visualiser.reset()
+            except AttributeError:
+                pass
+        if "NoFG" not in str(self):
+            warnings.warn(
+                "If training, use NoFG instead of FG in the env_id. Using FG will cause errors while training after a while."
+            )
+        
+        # Starts the engines
+        self.sim.start_engines()
+        self.sim.raise_landing_gear()
+
+        return {prop: self.sim[prop] for prop in self.observation_variables} 
+
+    def _init_new_sim(self, dt, aircraft, initial_conditions, using_flightgear):
+        return Simulation(
+            sim_frequency_hz=dt, aircraft=aircraft, init_conditions=initial_conditions, allow_flightgear_output=using_flightgear
+        )
+
+    def render(self, flightgear_blocking=True):
+        if self.render_mode is None:
+            assert self.spec is not None
+            warnings.warn(
+                "You are calling render method without specifying any render mode"
+            )
+            return
+
+        """Renders the environment.
+        The set of supported modes varies per environment. (And some
+        environments do not support rendering at all.) By convention,
+        if mode is:
+        - human: render to the current display or terminal and
+          return nothing. Usually for human consumption.
+        - rgb_array: Return an numpy.ndarray with shape (x, y, 3),
+          representing RGB values for an x-by-y pixel image, suitable
+          for turning into a video.
+        - ansi: Return a string (str) or StringIO.StringIO containing a
+          terminal-style text representation. The text can include newlines
+          and ANSI escape sequences (e.g. for colors).
+        Note:
+            Make sure that your class's metadata 'render.modes' key includes
+              the list of supported modes. It's recommended to call super()
+              in implementations to use the functionality of this method.
+
+        :param mode: str, the mode to render with
+        :param flightgear_blocking: waits for FlightGear to load before
+            returning if True, else returns immediately
+        """
+
+        if self.render_mode == "human":
+            if not self.figure_visualiser:
+                self.figure_visualiser = FigureVisualiser(
+                    self.sim, self.observation_variables
+                )
+            self.figure_visualiser.plot(self.sim)
+        elif self.render_mode == "flightgear":
+            if not self.flightgear_visualiser:
+                self.flightgear_visualiser = FlightGearVisualiser(
+                    self.sim, self.observation_variables, flightgear_blocking
+                )
+        elif self.render_mode == "human_fg":
+            if not self.flightgear_visualiser:
+                self.flightgear_visualiser = FlightGearVisualiser(
+                    self.sim, self.observation_variables, flightgear_blocking
+                )
+            self.flightgear_visualiser.plot(self.sim)
+        elif self.render_mode == "graph":
+            if not self.graph_visualiser:
+                self.graph_visualiser = GraphVisualiser(
+                    self.sim, self.observation_variables
+                )
+            self.graph_visualiser.plot(self.sim)
+        elif self.render_mode == "graph_fg":
+            if not self.flightgear_visualiser:
+                self.flightgear_visualiser = FlightGearVisualiser(
+                    self.sim, self.observation_variables, flightgear_blocking
+                )
+            if not self.graph_visualiser:
+                self.graph_visualiser = GraphVisualiser(
+                    self.sim, self.observation_variables
+                )
+            self.graph_visualiser.plot(self.sim)
+
+    def close(self):
+        """Cleans up this environment's objects
+
+        Environments automatically close() when garbage collected or when the
+        program exits.
+        """
+        if self.sim:
+            self.sim.close()
+        if self.figure_visualiser:
+            self.figure_visualiser.close()
+        if self.flightgear_visualiser:
+            self.flightgear_visualiser.close()
+        if self.graph_visualiser:
+            self.graph_visualiser.close()
