@@ -6,12 +6,12 @@ import math
 import enum
 import warnings
 from collections import namedtuple
-import jsbgym.properties as prp
-from jsbgym import assessors, rewards, utils
-from jsbgym.simulation import Simulation
-from jsbgym.properties import BoundedProperty, Property
-from jsbgym.aircraft import Aircraft, available_aircraft
-from jsbgym.rewards import RewardStub
+from . import properties as prp
+from . import assessors, rewards, utils
+from .simulation import Simulation
+from .properties import BoundedProperty, Property
+from .aircraft import Aircraft
+from .rewards import RewardStub
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence, Dict, Tuple, NamedTuple, Type
 

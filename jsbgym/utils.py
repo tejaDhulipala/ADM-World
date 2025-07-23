@@ -1,10 +1,7 @@
 import functools
 import operator
 from typing import Tuple
-from jsbgym.aircraft import (
-    Aircraft,
-    available_aircraft
-)
+from .aircraft import available_aircraft
 from typing import Dict, Iterable
 
 class AttributeFormatter:
@@ -41,7 +38,7 @@ def get_env_id(aircraft, task_type, shaping, enable_flightgear) -> str:
 def get_env_id_kwargs_map() -> Dict[str, Tuple]:
     """Returns all environment IDs mapped to tuple of (task, aircraft, shaping, flightgear)"""
     # lazy import to avoid circular dependencies
-    from jsbgym.tasks import Shaping, HeadingControlTask, TurnHeadingControlTask
+    from .tasks import Shaping, HeadingControlTask, TurnHeadingControlTask
     available_tasks = HeadingControlTask, TurnHeadingControlTask
 
     map = {}

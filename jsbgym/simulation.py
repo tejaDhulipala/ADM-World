@@ -4,8 +4,8 @@ import warnings
 import time
 from mpl_toolkits.mplot3d import Axes3D  # required for 3d plotting
 from typing import Dict, Union
-import jsbgym.properties as prp
-from jsbgym.aircraft import Aircraft, c172p
+from . import properties as prp
+from .aircraft import Aircraft, c172p
 
 
 class Simulation:
@@ -50,7 +50,7 @@ class Simulation:
         self.jsbsim.disable_output()
         self.wall_clock_dt = None
 
-    def __getitem__(self, prop: Union[prp.BoundedProperty, prp.Property]) -> float:
+    def __getitem__(self, prop: Union[prp.BoundedProperty, prp.Property, str]) -> float:
         """
         Retrieves specified simulation property.
 
@@ -61,10 +61,16 @@ class Simulation:
         :param prop: BoundedProperty, the property to be retrieved
         :return: float
         """
-        return self.jsbsim[prop.name]
+        prop_jsbsim_name = prop.name if type(prop) in [prp.BoundedProperty, prp.Property] else prop
+        try:
+            return self.jsbsim[prop_jsbsim_name]
+        except KeyError:
+            warnings.warn(f"Attempted to get item {prop_jsbsim_name}, which does not exist. This \
+            get_item will return None.")
+            return None
 
     def __setitem__(
-        self, prop: Union[prp.BoundedProperty, prp.Property], value
+        self, prop: Union[prp.BoundedProperty, prp.Property, str], value
     ) -> None:
         """
         Sets simulation property to specified value.
@@ -80,15 +86,28 @@ class Simulation:
         :param prop: BoundedProperty, the property to be retrieved
         :param value: object?, the value to be set
         """
-        exists = False
-        for p in self.jsbsim.get_property_catalog():
-            if prop.name in p:
-                exists == True
-                if "(R)" in p:
-                    warnings.warn("Attempting to set a value to a read-only value")
-        if not exists:
-            warnings.warn("Creating a new property")
-        self.jsbsim[prop.name] = value
+        if type(prop) in [prp.BoundedProperty, prp.Property]:
+            exists = False
+            for p in self.jsbsim.get_property_catalog():
+                if prop.name in p:
+                    exists = True
+                    if "(R)" in p:
+                        warnings.warn("Attempting to set a value to a read-only value")
+            if not exists:
+                warnings.warn(f"Creating a new property called {prop.name}")
+            self.jsbsim[prop.name] = value
+        elif type(prop) == str:
+            exists = False
+            for p in self.jsbsim.get_property_catalog():
+                if prop in p:
+                    exists = True
+                    if "(R)" in p:
+                        warnings.warn("Attempting to set a value to a read-only value")
+            if not exists:
+                warnings.warn(f"Creating a new property called {prop}")
+            self.jsbsim[prop] = value
+        else:
+            raise AssertionError("The property to set must be of type Property, BoundedProperty, or str.")
 
     def load_model(self, model_name: str) -> None:
         """

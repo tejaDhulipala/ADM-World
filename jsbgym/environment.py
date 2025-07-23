@@ -1,9 +1,9 @@
 import gymnasium as gym
 import numpy as np
-from jsbgym.tasks import Shaping, HeadingControlTask
-from jsbgym.simulation import Simulation
-from jsbgym.visualiser import FigureVisualiser, FlightGearVisualiser, GraphVisualiser
-from jsbgym.aircraft import Aircraft, c172p
+from .tasks import Shaping, HeadingControlTask
+from .simulation import Simulation
+from .visualiser import FigureVisualiser, FlightGearVisualiser, GraphVisualiser
+from .aircraft import Aircraft, c172p
 from typing import Optional, Type, Tuple, Dict
 import warnings
 import logging

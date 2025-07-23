@@ -1,6 +1,6 @@
 import math
 import collections
-from jsbgym import utils
+from . import utils
 
 
 class BoundedProperty(
@@ -162,6 +162,9 @@ initial_q_radps = Property("ic/q-rad_sec", "pitch rate [rad/s]")
 initial_r_radps = Property("ic/r-rad_sec", "yaw rate [rad/s]")
 initial_roc_fpm = Property("ic/roc-fpm", "initial rate of climb [ft/min]")
 initial_heading_deg = Property("ic/psi-true-deg", "initial (true) heading [deg]")
+initial_wind_heading = BoundedProperty("atmosphere/psiw-rad", "direction of wind in radians. north is 0, and increases counterclockwise to 2pi",
+0, 2 * math.pi)
+initial_wind_speed = BoundedProperty("atmosphere/wind-mag-fps", "Wind speed in feet per second", 0, math.inf)
 
 # Autopilot for cessna 172x
 ap_hold_straight_and_level = Property("ap/attitude_hold", "If set to 1, it rolls wings level")
@@ -169,6 +172,9 @@ ap_hold_altitude = Property("ap/altitude_hold", "Active when set to 1. Changes e
 ap_hold_heading = Property("ap/heading_hold", "Active when 1. Changes aielerons to ap/heading_setpoint")
 ap_heading_setpoint = Property("ap/heading_setpoint", "Heading setpoint in compass heading")
 ap_altitude_setpoint = Property("ap/altitude_setpoint", "Altitude setpoint in AGL")
+
+# Force
+load_factor = Property("forces/load-factor", "Load factor")
 
 class Vector2:
     def __init__(self, x: float, y: float):

@@ -1,7 +1,7 @@
-import jsbgym.properties as prp
+from . import properties as prp
 from abc import ABC, abstractmethod
 from typing import Tuple, Union
-from jsbgym.utils import reduce_reflex_angle_deg
+from .utils import reduce_reflex_angle_deg
 
 State = "tasks.FlightTask.State"  # alias for type hint
 

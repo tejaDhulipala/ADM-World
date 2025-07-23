@@ -1,5 +1,4 @@
 import collections
-from matplotlib.style.core import available
 
 class Aircraft(
     collections.namedtuple(
@@ -21,7 +20,7 @@ class Aircraft(
 
 
 c172p = Aircraft("c172p", "c172p", "C172P", 120)
-c172x = Aircraft("c172x", "c172p", "C172X", 120)
+c172x = Aircraft("c172x", "c172p", "C172X", 100)
 pa28 = Aircraft("pa28", "PA28-161-180", "PA28", 130)
 j3 = Aircraft("J3Cub", "J3Cub", "J3", 70)
 f15 = Aircraft("f15", "f15c", "F15", 500)

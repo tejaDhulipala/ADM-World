@@ -1,5 +1,4 @@
 import jsbsim
-from logging import RootLogger
 import os
 import jsbgym
 
@@ -11,3 +10,4 @@ plane = jsbgym.aircraft.c172x
 sim.load_model(plane.jsbsim_id)
 
 print(sim.get_property_catalog())
+print("TESTING SOMETHING")

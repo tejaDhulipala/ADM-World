@@ -1,8 +1,8 @@
-import jsbgym.properties as prp
-from jsbgym.simulation import Simulation
-from jsbgym.visualiser import FigureVisualiser, FlightGearVisualiser, GraphVisualiser
-from jsbgym.aircraft import Aircraft, c172x
-from jsbgym.properties import BoundedProperty, Property
+from . import properties as prp
+from .simulation import Simulation
+from .visualiser import FigureVisualiser, FlightGearVisualiser, GraphVisualiser
+from .aircraft import Aircraft, c172x
+from .properties import BoundedProperty, Property
 from typing import Optional, Dict, Union
 import warnings
 
@@ -22,6 +22,7 @@ class SimulationInterface:
         prp.lng_geoc_deg,         # longitude [deg]
         prp.altitude_sl_ft,       # altitude MSL [ft]
         prp.altitude_agl_ft,      # altitude AGL [ft]
+        prp.heading_deg,
 
         # --- Plane Orientation ---
         prp.pitch_rad,            # pitch [rad]
@@ -50,9 +51,11 @@ class SimulationInterface:
         prp.ap_hold_heading,
         prp.ap_heading_setpoint,
         prp.ap_altitude_setpoint,
+        # Time
+        prp.sim_dt
     ]
     default_state_variables = {
-        prp.initial_u_fps: 120,
+        prp.initial_u_fps: 0,
         prp.initial_v_fps: 0,
         prp.initial_w_fps: 0,
         prp.initial_p_radps: 0,
@@ -73,14 +76,14 @@ class SimulationInterface:
     def __init__(
         self,
         aircraft: Aircraft = c172x,
-        initial_conditions: Dict = default_initial_conditions,
+        initial_conditions: Dict = {},
         additional_obervation_properties: list = [],
         control_agent_interaction_freq: int = 5,
         render_mode: Optional[str] = None,
     ):
         """A Simulation Interface is essentially just a simulation with rendering 
 
-        :param aircraft: Aircraft type, defaults to c172p
+        :param aircraft: Aircraft type, defaults to c172x
         :type aircraft: Aircraft, optional
         :param initial_conditions: dictionary of initial conditions. The example is shown in this class. If the 
         inputed inital conditions are incomplete, it uses the default values, defaults to default_initial_conditions
@@ -107,19 +110,26 @@ class SimulationInterface:
         self.step_delay = None
         self.render_mode = render_mode
         self.init_conditions = SimulationInterface.default_initial_conditions.copy()
-        # Print initial conditions that the user did not modify
-        self.default_initial_conditions[prp.initial_u_fps] = self.aircraft.get_cruise_speed_fps()
+        # Print initial conditions that the user did not modify 
+        self.init_conditions[prp.initial_u_fps] = self.aircraft.get_cruise_speed_fps()
         user_keys = set(initial_conditions.keys())
         init_condition_keys = set(SimulationInterface.default_initial_conditions.keys())
-        print(f"Properties that you did not add (resorted to default): {init_condition_keys - user_keys}")
+        print(f"Properties that you did not add (set to default): {init_condition_keys - user_keys}")
+        print(f"Properties changed: {init_condition_keys.intersection(user_keys)}")
         print(f"Additional properties you added that defaults did not already have {user_keys - init_condition_keys}")
         for prop, val in initial_conditions.items():
             self.init_conditions[prop] = val
         # Add additional observation properties
         self.observation_variables = SimulationInterface.base_observation_variables + additional_obervation_properties
         self.observation_variables = tuple(set(self.observation_variables))
+        # Simulation environment
+        self.time_series = []
+        self.aileron_cmd = []
+        self.elevator_vars = []
+        self.rudder_cmd = []
+        self.observations = []
 
-    def step(self, actions: Dict[Union[Property, BoundedProperty], Union[int, float]]):
+    def step(self, actions: Dict[Union[Property, BoundedProperty, str], Union[int, float]]):
         if (
             self.render_mode == "human"
             or self.render_mode == "graph"
@@ -131,12 +141,22 @@ class SimulationInterface:
 
         for prop, command in actions.items():
             self.sim[prop] = command
+        
+        # Data collection for graphing
+        self.time_series.append(self.sim[prp.sim_time_s])
+        self.aileron_cmd.append(self.sim[prp.aileron_left])
+        elevator_props = [self.sim["fcs/elevator-cmd-norm"], self.sim["fcs/elevator-pos-rad"], 
+        self.sim["ap/elevator_cmd"], self.sim["fcs/pitch-trim-cmd-norm"]]
+        self.elevator_vars.append(elevator_props)
+        self.rudder_cmd.append(self.sim[prp.rudder_cmd])
+        ob = {prop: self.sim[prop] for prop in self.observation_variables}
+        self.observations.append(ob)
 
         # run simulation
         for _ in range(self.sim_steps_per_agent_step):
             self.sim.run()
         
-        return {prop: self.sim[prop] for prop in self.observation_variables}
+        return ob
 
     def initialize(self) -> Dict[Union[BoundedProperty, Property], Union[float, int]]:
         if self.sim:
@@ -200,11 +220,12 @@ class SimulationInterface:
         :param flightgear_blocking: waits for FlightGear to load before
             returning if True, else returns immediately
         """
+        six_pack = (prp.ias_kts, prp.altitude_sl_ft, prp.heading_deg, prp.pitch_rad, prp.pitch_rad, prp.roll_rad)
 
         if self.render_mode == "human":
             if not self.figure_visualiser:
                 self.figure_visualiser = FigureVisualiser(
-                    self.sim, self.observation_variables
+                    self.sim, six_pack
                 )
             self.figure_visualiser.plot(self.sim)
         elif self.render_mode == "flightgear":
@@ -215,7 +236,7 @@ class SimulationInterface:
         elif self.render_mode == "human_fg":
             if not self.flightgear_visualiser:
                 self.flightgear_visualiser = FlightGearVisualiser(
-                    self.sim, self.observation_variables, flightgear_blocking
+                    self.sim, six_pack, flightgear_blocking
                 )
             self.flightgear_visualiser.plot(self.sim)
         elif self.render_mode == "graph":
@@ -234,6 +255,9 @@ class SimulationInterface:
                     self.sim, self.observation_variables
                 )
             self.graph_visualiser.plot(self.sim)
+    
+    def get_property(self, prop: Union[BoundedProperty, Property, str]):
+        return self.sim[prop]
 
     def close(self):
         """Cleans up this environment's objects

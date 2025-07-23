@@ -1,9 +1,9 @@
 import gymnasium as gym
 import enum
 
-from jsbgym.tasks import Task, HeadingControlTask, TurnHeadingControlTask
-from jsbgym.aircraft import Aircraft, c172x
-from jsbgym import environment, utils
+from .tasks import Task, HeadingControlTask, TurnHeadingControlTask
+from .aircraft import *
+from . import utils
 
 """
 This script registers all combinations of task, aircraft, shaping settings

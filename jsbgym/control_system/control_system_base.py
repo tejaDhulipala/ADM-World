@@ -3,13 +3,13 @@ from pickle import DICT
 from typing import Dict
 
 
-class ControlSystemBase(ABC):
+class ControlInterfaceBase(ABC):
     """
-    The purpose of the control system is to parse instructions from the decision making 
+    The purpose of the control interface is to parse instructions from the decision making 
     algorithm and return an action for the Simulation Interface to parse.
 
     An example instruction looks like this:
-    control system:
+    control interface:
         shallow heading hold:
             heading:
         shallow altitude hold:
@@ -33,4 +33,8 @@ class ControlSystemBase(ABC):
 
     @abstractmethod
     def action(self, observation: Dict) -> Dict:
+        pass
+
+    @abstractmethod
+    def get_eval(self) -> Dict:
         pass

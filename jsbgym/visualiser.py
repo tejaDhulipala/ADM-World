@@ -3,9 +3,9 @@ import subprocess
 import time
 import matplotlib as mpt
 import matplotlib.pyplot as plt
-import jsbgym.properties as prp
-from jsbgym.aircraft import Aircraft
-from jsbgym.simulation import Simulation
+from . import properties as prp
+from .aircraft import Aircraft
+from .simulation import Simulation
 from typing import NamedTuple, Tuple
 import logging
 
