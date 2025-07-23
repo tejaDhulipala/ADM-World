@@ -175,10 +175,6 @@ class SimulationInterface:
                 self.graph_visualiser.reset()
             except AttributeError:
                 pass
-        if "NoFG" not in str(self):
-            warnings.warn(
-                "If training, use NoFG instead of FG in the env_id. Using FG will cause errors while training after a while."
-            )
         
         # Starts the engines
         self.sim.start_engines()
