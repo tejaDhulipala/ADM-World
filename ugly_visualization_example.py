@@ -1,5 +1,3 @@
-import graphlib
-from numpy import intp
 import jsbgym
 import jsbgym.properties as prp
 from jsbgym.simulation_interface import SimulationInterface

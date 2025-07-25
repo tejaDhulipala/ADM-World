@@ -31,7 +31,7 @@ class SimulationInterface:
 
         # --- Velocities ---
         prp.ias_kts,              # indicated airspeed [kts]
-        prp.groundspeed_kts,      # groundspeed [ft/s]
+        prp.groundspeed_fps,      # groundspeed [ft/s]
         prp.vertical_speed_fps,    # vertical speed [ft/s]
 
         # --- Control state ---

@@ -1,5 +1,5 @@
-from jsbgym.control_system_default import ControlSystemDefault
-from jsbgym.instruction_following_scenario import InstructionFollowingScenario
+from jsbgym.control_system.control_system_default import ControlInterfaceDefault
+from jsbgym.control_system.instruction_following_scenario import InstructionFollowingScenario
 
 base_inst = {
     "control interface": {
@@ -23,7 +23,7 @@ base_inst = {
 
 }
 
-scenario = InstructionFollowingScenario(base_inst, ControlSystemDefault(), render_mode="graph", max_steps=150)
+scenario = InstructionFollowingScenario(base_inst, ControlInterfaceDefault(), render_mode="graph", max_steps=150)
 scenario.start_environment()
 scenario.run()
 scenario.close_scenario()

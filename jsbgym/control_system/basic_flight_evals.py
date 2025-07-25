@@ -38,7 +38,7 @@ class BasicFlightControlEval:
     """
     ACCEPTABLE_HEADING_ERR = 7.5
     ACCEPTABLE_ALTITUDE_ERR = 50
-    def __init__(self) -> None:
+    def __init__(self, aircraft: Aircraft) -> None:
         # --> Set-up trajectory data. Each of these is an array of trajectories for each eval run
         # Control surfaces
         self.trjs_aileron_pos_left = []
@@ -64,6 +64,10 @@ class BasicFlightControlEval:
         self.initial_conditions = [] # list of dictionaries
         self.cases = [] # list of tuples
         self.evals = [] # list of dictionaries
+        self.sorted_indices = None
+
+        self.aircraft = aircraft
+
 
     def run_single_eval(self, alt_case: AltCase, hdg_case: HdgCase, control_subsystem,
      render_mode=None, aircraft:Aircraft=c172x, wind_case:WindCase=WindCase.CLM) -> Dict:
@@ -96,7 +100,7 @@ class BasicFlightControlEval:
             "max hdg overshoot": 0,
             "max load factor": 0,
             "avg load factor": 0,
-            "min airspeed": initial_airspeed_fps / Aircraft.KTS_TO_FT_PER_S,
+            "min airspeed": initial_airspeed_fps / KTS_TO_FT_PER_S,
             "max airspeed": -1,
             "avg airspeed": 0,
             "avg alt steady state error": 0,
@@ -195,7 +199,7 @@ class BasicFlightControlEval:
             "max hdg overshoot": 0,
             "max load factor": 0,
             "avg load factor": 0,
-            "min airspeed": initial_airspeed_fps / Aircraft.KTS_TO_FT_PER_S,
+            "min airspeed": initial_airspeed_fps / KTS_TO_FT_PER_S,
             "max airspeed": -1,
             "avg airspeed": 0,
             "avg alt steady state error": 0,
@@ -288,7 +292,7 @@ class BasicFlightControlEval:
             trj_hdg_error.append(hdg_error if sim.get_property(prp.heading_deg) < des_hdg else -hdg_error)
             # Speeds
             trj_kias.append(sim.get_property(prp.ias_kts))
-            trj_ground_speed.append(sim.get_property(prp.groundspeed_kts))
+            trj_ground_speed.append(sim.get_property(prp.groundspeed_fps) / KTS_TO_FT_PER_S)
             # Time
             trj_time.append(sim.get_property(prp.sim_time_s))
 
@@ -328,6 +332,85 @@ class BasicFlightControlEval:
         self.cases.append((alt_case, hdg_case, wind_case))
 
         return exact_conditions, cur_eval
+    
+    def batch_test(self, alt_cases: list[AltCase], hdg_cases: list[AltCase], wind_cases: list[WindCase], control_subsystem
+    ,num_trials: int, aircraft:Aircraft=c172x):
+        """Runs a complets batch of tests and saves all data to the instance varibales of the class. Does all
+        combinations of the cases given. Prints out initial conditions and evaluations for each case. 
+        
+        :param alt_cases: List of altitude cases 
+        :type alt_cases: list[AltCase]
+        :param hdg_cases: List of heading cases
+        :type hdg_cases: list[AltCase]
+        :param wind_cases: list of wind cases
+        :type wind_cases: list[WindCase]
+        :param control_subsystem: An object that has a method action(SimulationInterface, des_alt, des_hdg)
+        :type control_subsystem: object
+        :param num_trials: The number of trials to run for each case
+        :type num_trials: int
+        :param aircraft: Aircraft type of type Aircraft, defaults to c172x
+        :type aircraft: Aircraft, optional
+        """
+
+        for alt_case in alt_cases:
+            for hdg_case in hdg_cases:
+                for wind_case in wind_cases:
+                    print(f"=== CASE ALTITUDE: {alt_case} HEADING: {hdg_case} WIND: {wind_case} ===")
+                    for i in range(num_trials):
+                        print(f"--> EXAMPLE {i}")
+                        ics, evals = self.run_single_eval(alt_case, hdg_case, control_subsystem, aircraft=aircraft, wind_case=wind_case)
+                        print(f"Average steady state error:{evals["avg alt steady state error"]}")
+                        print(f"Time to first conatact: {evals["time to first contact s"]}") 
+    
+    def sort_evals(self) -> list[int]:
+        """Returns a list of the index of individual evalutaions sorted by from worst to best. It also changes the values of self.sorted_evals
+        to the sorted_evals.
+        The evaluation criteria is:
+        1. Min airspeed below stall speed or max airspeed above Vne
+        2. avg steady state alt error rounded to the nearest 50
+        3. max alt overshoot to the nearest 50
+        4. time to first contact greater than the expected time (true / false)
+        5. max load factor to the nearest 0.5
+
+        :return: The list of indexes of evaluations in self.evals. 
+        :rtype: list[int]
+        """
+        def round_to_nearest(value, base):
+            return round(value / base) * base
+
+        def eval_sort_key(eval):
+            # Criterion 1: Airspeed envelope violation
+            airspeed_violation = (
+                eval["min airspeed"] < self.aircraft.Vs1 or
+                eval["max airspeed"] > self.aircraft.Vne
+            )
+
+            # Criterion 2: Avg alt steady-state error (rounded to nearest 50)
+            avg_alt_error_rounded = round_to_nearest(eval["avg alt steady state error"], 50)
+
+            # Criterion 3: Max alt overshoot (rounded to nearest 50)
+            max_alt_overshoot_rounded = round_to_nearest(eval["max alt overshoot"], 50)
+
+            # Criterion 4: Late contact time (True if time > expected)
+            late_contact = eval["time to first contact s"] > self.expected_contact_time
+
+            # Criterion 5: Max load factor (rounded to nearest 0.5)
+            max_load_factor_rounded = round_to_nearest(eval["max load factor"], 0.5)
+
+            return (
+                int(airspeed_violation),            # 0 = no violation, 1 = violation
+                avg_alt_error_rounded,
+                max_alt_overshoot_rounded,
+                int(late_contact),                  # 0 = on-time or earlier, 1 = late
+                max_load_factor_rounded
+            )
+
+        indexed_evals = list(enumerate(self.evals))
+        indexed_evals.sort(key=lambda pair: eval_sort_key(pair[1]))
+
+        self.sorted_indices = [idx for idx, _ in indexed_evals]
+        return self.sorted_indices
+
 
     def plot_eval(self, index=-1):
         """
@@ -418,10 +501,3 @@ class BasicFlightControlSubsystem:
         actions[prp.mixture_cmd] = 0.8
 
         return actions
-
-if __name__ == "__main__":
-    basic_flight_control_evaluator = BasicFlightControlEval()
-    conditions, flight_evals = basic_flight_control_evaluator.run_single_eval(AltCase.DSC_G_500, HdgCase.HDG_L_45, BasicFlightControlSubsystem())
-    print(conditions)
-    print(flight_evals)
-    basic_flight_control_evaluator.plot_eval()

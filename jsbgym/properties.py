@@ -71,8 +71,8 @@ altitude_rate_fps = Property("velocities/h-dot-fps", "Rate of altitude change [f
 ias_kts = BoundedProperty(
     "velocities/vc-kts", "indicated airspeed [kts]", 0, 400
 )
-groundspeed_kts = BoundedProperty(
-    "velocities/vg-kts", "groundspeed kts", 0, 2000
+groundspeed_fps = BoundedProperty(
+    "velocities/vg-fps", "groundspeed fps", 0, 2000
 )
 vertical_speed_fps = BoundedProperty(
     "velocities/h-dot-fps", "vertical speed [ft/s]", -10000, 10000
