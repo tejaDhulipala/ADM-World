@@ -1,6 +1,8 @@
 from math import pi
 from typing import Dict
 
+from jsbgym.control_system.basic_flight_pid import HeadingPIDControlSubsystem
+
 from ..aircraft import *
 from ..control_system.control_system_default import AltitudeHoldSubsystem, HeadingHoldSubsystem
 from ..simulation_interface import SimulationInterface
@@ -38,7 +40,7 @@ class BasicFlightControlEval:
     """
     ACCEPTABLE_HEADING_ERR = 7.5
     ACCEPTABLE_ALTITUDE_ERR = 50
-    def __init__(self, aircraft: Aircraft) -> None:
+    def __init__(self, aircraft: Aircraft=None) -> None:
         # --> Set-up trajectory data. Each of these is an array of trajectories for each eval run
         # Control surfaces
         self.trjs_aileron_pos_left = []
@@ -105,7 +107,9 @@ class BasicFlightControlEval:
             "avg airspeed": 0,
             "avg alt steady state error": 0,
             "avg hdg steady state error": 0,
-            "time to first contact s": -1
+            "time to first contact s": -1,
+            "max man time mins": max_maneuver_time_mins,
+            "max time mins": max_steps / interaction_freq / 60
         }
         :rtype: Dict
         """
@@ -121,6 +125,9 @@ class BasicFlightControlEval:
         except:
             raise AssertionError("The altitude or heading algorithm is not is the correct format")
         
+        # Change self.aircraft
+        self.aircraft = aircraft
+        
         # --> Change variables based on the case
         alt_change = 0
         hdg_change = 0
@@ -133,7 +140,7 @@ class BasicFlightControlEval:
             case AltCase.CLB_200_500:
                 alt_change = random.uniform(250, 550)
             case AltCase.CLB_G_500:
-                alt_case = random.uniform(700, 3000)
+                alt_change = random.uniform(700, 3000)
             case AltCase.DSC_L_200:
                 alt_change = -random.uniform(20, 200)
             case AltCase.DSC_200_500:
@@ -188,10 +195,10 @@ class BasicFlightControlEval:
         interaction_freq = 5
 
         # Calculate the steps of the simulation so it doesn't render more than it needs to & determine steps to consider steady state
-        max_maneuver_time_mins = max(alt_change / 500, hdg_change / 180) * 1.5
+        max_maneuver_time_mins = max(abs(alt_change) / 500, abs(hdg_change) / 180) * 1.5
         max_man_steps = max_maneuver_time_mins * 60 * interaction_freq
         max_steps = max_man_steps + 90 * interaction_freq # 90 seconds of steady state flight 
-        print(f"Running simulatin for {max_steps} steps")
+        print(f"Running simulation for {max_steps} steps")
 
         # Set-up eval metrics dictionary
         cur_eval = {
@@ -204,7 +211,9 @@ class BasicFlightControlEval:
             "avg airspeed": 0,
             "avg alt steady state error": 0,
             "avg hdg steady state error": 0,
-            "time to first contact s": -1
+            "time to first contact s": 0,
+            "max man time mins": max_maneuver_time_mins,
+            "max time mins": max_steps / interaction_freq / 60
         }
 
         # --> Set-up trajectory data
@@ -269,7 +278,7 @@ class BasicFlightControlEval:
                 cur_eval["avg alt steady state error"] += alt_error
             # avg hdg steady state error
             if num_steps > max_man_steps:
-                cur_eval["avg hdg steady state error"] += alt_error
+                cur_eval["avg hdg steady state error"] += hdg_error
             # Time to first contact
             if alt_error < self.ACCEPTABLE_ALTITUDE_ERR and hdg_error < self.ACCEPTABLE_HEADING_ERR and not \
                     cur_eval["time to first contact s"]:
@@ -281,6 +290,7 @@ class BasicFlightControlEval:
             trj_aileron_pos_right.append(sim.get_property(prp.aileron_right))
             trj_aileron_fcs_cmd.append(sim.get_property(prp.aileron_cmd))
             trj_aileron_ap_cmd.append(sim.get_property("ap/aileron_cmd"))
+
             trj_elevator_fcs_cmd.append(sim.get_property(prp.elevator_cmd))
             trj_elevator_ap_cmd.append(sim.get_property("ap/elevator_cmd"))
             trj_elevator_trim.append(sim.get_property("fcs/pitch-trim-cmd-norm"))
@@ -362,7 +372,7 @@ class BasicFlightControlEval:
                         print(f"Average steady state error:{evals["avg alt steady state error"]}")
                         print(f"Time to first conatact: {evals["time to first contact s"]}") 
     
-    def sort_evals(self) -> list[int]:
+    def sort_evals(self) -> tuple[list[int], list[tuple]]:
         """Returns a list of the index of individual evalutaions sorted by from worst to best. It also changes the values of self.sorted_evals
         to the sorted_evals.
         The evaluation criteria is:
@@ -372,7 +382,8 @@ class BasicFlightControlEval:
         4. time to first contact greater than the expected time (true / false)
         5. max load factor to the nearest 0.5
 
-        :return: The list of indexes of evaluations in self.evals. 
+        :return: indices, criteria. The inidices are The list of indexes of evaluations in self.evals. The criteria is a list
+        of tuples describing how this function evaluated each eval as stated above. 
         :rtype: list[int]
         """
         def round_to_nearest(value, base):
@@ -392,7 +403,8 @@ class BasicFlightControlEval:
             max_alt_overshoot_rounded = round_to_nearest(eval["max alt overshoot"], 50)
 
             # Criterion 4: Late contact time (True if time > expected)
-            late_contact = eval["time to first contact s"] > self.expected_contact_time
+            buffer_time_s = 5
+            late_contact = eval["time to first contact s"] > (eval["max man time mins"] / 60 + buffer_time_s)
 
             # Criterion 5: Max load factor (rounded to nearest 0.5)
             max_load_factor_rounded = round_to_nearest(eval["max load factor"], 0.5)
@@ -407,10 +419,58 @@ class BasicFlightControlEval:
 
         indexed_evals = list(enumerate(self.evals))
         indexed_evals.sort(key=lambda pair: eval_sort_key(pair[1]))
+        indexed_evals.reverse() # Reverse from best to worst to worst to best
 
         self.sorted_indices = [idx for idx, _ in indexed_evals]
-        return self.sorted_indices
+        criteria = [eval_sort_key(pair[1]) for pair in indexed_evals]
+        return self.sorted_indices, criteria
+    
+    def create_batch_eval(self, indices: list[int], plot=True):
+        """Creates an evaluation for the batch of indicies given. The batch evaluation will invlude the following, with the case and number:
+        batch_evals = {
+            "max alt overshoot": 0, 
+            "max alt avg steady state error": 0,
+            "avg alt steady state error": 0,
+            "avg max alt overshoot": 0,
+            "avg hdg steady state error": 0,
+            "max hdg overshoot": 0,
+            "avg time fufillment": 0, # This is the average of fraction of the max man time the algorithm takes to first contant 
+            "mean abs alt steady state error": 0
+        }
 
+        If plot is true, then it will create a plot of max alt overshoot and avg alt ss error for all cases.
+        """
+        batch_evals = {
+            "max alt overshoot": 0, 
+            "max alt avg steady state error": 0,
+            "avg alt steady state error": 0,
+            "avg max alt overshoot": 0,
+            "avg hdg steady state error": 0,
+            "max hdg overshoot": 0,
+            "avg time fufillment": 0, # This is the average of fraction of the max man time the algorithm takes to first contant 
+            "mean abs alt steady state error": 0
+        }
+        for i in indices:
+            batch_evals["max alt overshoot"] = max(batch_evals["max alt overshoot"], self.evals[i]["max alt overshoot"])
+            batch_evals["max alt avg steady state error"] = max(batch_evals["max alt avg steady state error"], self.evals[i]["avg alt steady state error"])
+            batch_evals["avg alt steady state error"] += self.evals[i]["avg alt steady state error"]
+            batch_evals["avg max alt overshoot"] += self.evals[i]["max alt overshoot"]
+            batch_evals["avg hdg steady state error"] += self.evals[i]["avg hdg steady state error"]
+            batch_evals["max hdg overshoot"] = max(batch_evals["max hdg overshoot"], self.evals[i]["max hdg overshoot"])
+            if self.evals[i]["max man time mins"] != 0:
+                time_first_c = self.evals[i]["time to first contact s"]
+                if time_first_c == 0:
+                    time_first_c = self.evals[i]["max man time mins"] * 2 * 60
+                batch_evals["avg time fufillment"] +=  time_first_c / self.evals[i]["max man time mins"] / 60
+        num_indices = len(indices)
+        batch_evals["avg alt steady state error"] /= num_indices
+        batch_evals["avg max alt overshoot"] /= num_indices
+        batch_evals["avg hdg steady state error"] /= num_indices
+        batch_evals["avg time fufillment"] /= num_indices
+        for i in indices:
+            batch_evals["mean abs alt steady state error"] += abs(self.evals[i]["avg alt steady state error"] - batch_evals["avg alt steady state error"])
+        batch_evals["mean abs alt steady state error"] /= num_indices
+        return batch_evals
 
     def plot_eval(self, index=-1):
         """
@@ -434,11 +494,11 @@ class BasicFlightControlEval:
         # First chart: All control commands and deflections
         axs[0].plot(time, self.trjs_aileron_pos_left[idx], label="Aileron Pos Left")
         axs[0].plot(time, self.trjs_aileron_pos_right[idx], label="Aileron Pos Right")
-        # axs[0].plot(time, self.trjs_aileron_fcs_cmd[idx], label="Aileron FCS Cmd")
-        # axs[0].plot(time, self.trjs_aileron_ap_cmd[idx], label="Aileron AP Cmd")
+        axs[0].plot(time, self.trjs_aileron_fcs_cmd[idx], label="Aileron FCS Cmd")
+        axs[0].plot(time, self.trjs_aileron_ap_cmd[idx], label="Aileron AP Cmd")
         # axs[0].plot(time, self.trjs_elevator_fcs_cmd[idx], label="Elevator FCS Cmd")
-        axs[0].plot(time, self.trjs_elevator_ap_cmd[idx], label="Elevator AP Cmd")
-        axs[0].plot(time, self.trjs_elevator_pos[idx], label="Elevator Pos Norm")
+        # axs[0].plot(time, self.trjs_elevator_ap_cmd[idx], label="Elevator AP Cmd")
+        # axs[0].plot(time, self.trjs_elevator_pos[idx], label="Elevator Pos Norm")
         # axs[0].plot(time, self.trjs_elevator_trim[idx], label="Elevator Trim")
         # axs[0].plot(time, self.trjs_rudder_fcs_cmd[idx], label="Rudder FCS Cmd")
         # axs[0].plot(time, self.trjs_rudder_fcs_pos[idx], label="Rudder FCS Pos")
@@ -452,6 +512,7 @@ class BasicFlightControlEval:
         axs[1].set_title("Altitude Error")
         axs[1].set_ylabel("Error")
         axs[1].legend()
+        axs[1].axvline(x=self.evals[index]["max man time mins"]*60)
         axs[1].grid(True, which='both')
 
         # Third chart: heading error
@@ -460,6 +521,7 @@ class BasicFlightControlEval:
         axs[2].set_ylabel("Error")
         axs[2].legend()
         axs[2].grid(True, which='both')
+        axs[2].axvline(x=self.evals[index]["max man time mins"]*60)
         y_minor_spacing = 10
         minor_locator = MultipleLocator(y_minor_spacing)
         axs[2].yaxis.set_minor_locator(minor_locator)
@@ -477,7 +539,7 @@ class BasicFlightControlEval:
         plt.minorticks_on()
         plt.show()
 
-class BasicFlightControlSubsystem:
+class FGAPControlSubsystem:
     def __init__(self) -> None:
         self.heading_subsystem = HeadingHoldSubsystem()
         self.altitude_subsystem = AltitudeHoldSubsystem()

@@ -1,3 +1,4 @@
+from PIL.ImageOps import cover
 import jsbsim
 import os
 import warnings
@@ -62,12 +63,9 @@ class Simulation:
         :return: float
         """
         prop_jsbsim_name = prop.name if type(prop) in [prp.BoundedProperty, prp.Property] else prop
-        try:
-            return self.jsbsim[prop_jsbsim_name]
-        except KeyError:
-            warnings.warn(f"Attempted to get item {prop_jsbsim_name}, which does not exist. This \
-            get_item will return None.")
-            return None
+        # I tried to add checking to this but that adds an order of magnitude of time (1.3s to 10.7 s)
+        return self.jsbsim[prop_jsbsim_name]
+
 
     def __setitem__(
         self, prop: Union[prp.BoundedProperty, prp.Property, str], value
@@ -86,28 +84,23 @@ class Simulation:
         :param prop: BoundedProperty, the property to be retrieved
         :param value: object?, the value to be set
         """
-        if type(prop) in [prp.BoundedProperty, prp.Property]:
-            exists = False
-            for p in self.jsbsim.get_property_catalog():
-                if prop.name in p:
-                    exists = True
-                    if "(R)" in p:
-                        warnings.warn("Attempting to set a value to a read-only value")
-            if not exists:
-                warnings.warn(f"Creating a new property called {prop.name}")
-            self.jsbsim[prop.name] = value
-        elif type(prop) == str:
-            exists = False
-            for p in self.jsbsim.get_property_catalog():
-                if prop in p:
-                    exists = True
-                    if "(R)" in p:
-                        warnings.warn("Attempting to set a value to a read-only value")
-            if not exists:
-                warnings.warn(f"Creating a new property called {prop}")
-            self.jsbsim[prop] = value
+        jsbsim_name = prop.name if type(prop) in [prp.BoundedProperty, prp.Property] else prop 
+        exists = False
+        read_only = False
+        for p in self.jsbsim.get_property_catalog():
+            if jsbsim_name in p:
+                exists = True
+                if "(R)" in p:
+                    read_only = True
+                    warnings.warn("Attempting to set a value to a read-only value")
+                break
+        if not exists:
+            warnings.warn(f"Creating a new property called {jsbsim_name}")
         else:
-            raise AssertionError("The property to set must be of type Property, BoundedProperty, or str.")
+            self.jsbsim[jsbsim_name] = value
+            val = self.jsbsim[jsbsim_name]
+            if not read_only and val != value:
+                warnings.warn(f"The value {jsbsim_name} is supposed to be able to be writeable, but its value has not been updated.")
 
     def load_model(self, model_name: str) -> None:
         """

@@ -23,6 +23,7 @@ pitch_rad = BoundedProperty(
     "attitude/pitch-rad", "pitch [rad]", -0.5 * math.pi, 0.5 * math.pi
 )
 roll_rad = BoundedProperty("attitude/roll-rad", "roll [rad]", -math.pi, math.pi)
+roll_phi_rad = BoundedProperty("attitude/phi-rad", "roll [rad]", -math.pi, math.pi)
 heading_deg = BoundedProperty("attitude/psi-deg", "heading [deg]", 0, 360)
 sideslip_deg = BoundedProperty("aero/beta-deg", "sideslip [deg]", -180, +180)
 lat_geod_deg = BoundedProperty(
@@ -80,10 +81,10 @@ vertical_speed_fps = BoundedProperty(
 
 # controls state
 aileron_left = BoundedProperty(
-    "fcs/left-aileron-pos-norm", "left aileron position, normalised", -1, 1
+    "fcs/left-aileron-pos-rad", "left aileron position, rad", -1, 1
 )
 aileron_right = BoundedProperty(
-    "fcs/right-aileron-pos-norm", "right aileron position, normalised", -1, 1
+    "fcs/right-aileron-pos-rad", "right aileron position, rad", -1, 1
 )
 elevator = BoundedProperty(
     "fcs/elevator-pos-norm", "elevator position, normalised", -1, 1
