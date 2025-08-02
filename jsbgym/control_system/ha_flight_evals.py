@@ -1,7 +1,6 @@
+from copy import deepcopy
 from math import pi
 from typing import Dict
-
-from jsbgym.control_system.basic_flight_pid import HeadingPIDControlSubsystem
 
 from ..aircraft import *
 from ..control_system.control_system_default import AltitudeHoldSubsystem, HeadingHoldSubsystem
@@ -33,14 +32,14 @@ class WindCase(Enum):
     WND_10_15 = "Max crosswind component between 10 and 15 knots. Steady wind."
     WND_G_15 = "Max crosswind component greater than 15 knots. Steady."
 
-class BasicFlightControlEval:
+class HAFlightControlEval:
     """
-    The purpose of this class is to test and produce evaluation metrics of the ability of the airplane to do any combination of the four basic flight
+    HAA stands for heading and altitude, which are the parameters given to the control system. The purpose of this class is to test and produce evaluation metrics of the ability of the airplane to do any combination of the four basic flight
     maneuvers: climbs, descents, turns, and straight & level in the normal (not slow flight) control regime. 
     """
     ACCEPTABLE_HEADING_ERR = 7.5
     ACCEPTABLE_ALTITUDE_ERR = 50
-    def __init__(self, aircraft: Aircraft=None) -> None:
+    def __init__(self, aircraft: Aircraft=None, custom_tracking_vars:list[str]=[]) -> None:
         # --> Set-up trajectory data. Each of these is an array of trajectories for each eval run
         # Control surfaces
         self.trjs_aileron_pos_left = []
@@ -67,6 +66,7 @@ class BasicFlightControlEval:
         self.cases = [] # list of tuples
         self.evals = [] # list of dictionaries
         self.sorted_indices = None
+        self.trjs_custom_tracking_vars = {var: [] for var in custom_tracking_vars}
 
         self.aircraft = aircraft
 
@@ -118,11 +118,13 @@ class BasicFlightControlEval:
         assert isinstance(hdg_case, HdgCase)
         assert isinstance(wind_case, WindCase)
         try:
-            sim = SimulationInterface()
-            sim.initialize()
-            act = control_subsystem.action(sim, 5000, 90)
+            sim = None
+            mock_control = deepcopy(control_subsystem)
+            act = mock_control.action(sim, 5000, 90)
             assert type(act) == dict
-        except:
+        except AttributeError:
+            pass
+        except TypeError or AssertionError:
             raise AssertionError("The altitude or heading algorithm is not is the correct format")
         
         # Change self.aircraft
@@ -236,6 +238,8 @@ class BasicFlightControlEval:
         trj_ground_speed = []
         # Time
         trj_time = []
+        # custom tracking vars
+        trj_custom_tracking_vars = {var: [] for var in self.trjs_custom_tracking_vars}
         
         # --> Run sim
         sim = SimulationInterface(initial_conditions=initial_conditions, aircraft=aircraft, render_mode=render_mode,
@@ -245,9 +249,7 @@ class BasicFlightControlEval:
         num_steps = 0
         while num_steps < max_steps:
             # --> Execute actions
-            actions = {}
-            for prop, val in control_subsystem.action(sim, des_alt, des_hdg).items():
-                actions[prop] = val
+            actions = control_subsystem.action(sim, des_alt, des_hdg)
             obs = sim.step(actions)
             
             # --> Edit evaluations
@@ -268,11 +270,11 @@ class BasicFlightControlEval:
             # Avg load factor. I'm not actually calculating the avg yet for simplicity
             cur_eval["avg load factor"] += abs(sim.get_property(prp.load_factor))
             # Min airspeed
-            cur_eval["min airspeed"] = min(cur_eval["min airspeed"], sim.get_property(prp.ias_kts))
+            cur_eval["min airspeed"] = min(cur_eval["min airspeed"], sim.get_property(prp.cas_kts))
             # max airspeed
-            cur_eval["max airspeed"] = max(cur_eval["max airspeed"], sim.get_property(prp.ias_kts))
+            cur_eval["max airspeed"] = max(cur_eval["max airspeed"], sim.get_property(prp.cas_kts))
             # avg airspeed, but sum for now
-            cur_eval["avg airspeed"] += sim.get_property(prp.ias_kts)
+            cur_eval["avg airspeed"] += sim.get_property(prp.cas_kts)
             # avg alt steady state error
             if num_steps > max_man_steps:
                 cur_eval["avg alt steady state error"] += alt_error
@@ -296,15 +298,17 @@ class BasicFlightControlEval:
             trj_elevator_trim.append(sim.get_property("fcs/pitch-trim-cmd-norm"))
             trj_rudder_fcs_cmd.append(sim.get_property(prp.rudder_cmd))
             trj_rudder_fcs_pos.append(sim.get_property(prp.rudder))
-            trj_elevator_pos.append(sim.get_property(prp.elevator))
+            trj_elevator_pos.append(sim.get_property(prp.elevator_rad))
             # Errors
             trj_alt_error.append(alt_error if sim.get_property(prp.altitude_sl_ft) > des_alt else -alt_error)
             trj_hdg_error.append(hdg_error if sim.get_property(prp.heading_deg) < des_hdg else -hdg_error)
             # Speeds
-            trj_kias.append(sim.get_property(prp.ias_kts))
+            trj_kias.append(sim.get_property(prp.cas_kts))
             trj_ground_speed.append(sim.get_property(prp.groundspeed_fps) / KTS_TO_FT_PER_S)
             # Time
             trj_time.append(sim.get_property(prp.sim_time_s))
+            for var in self.trjs_custom_tracking_vars:
+                trj_custom_tracking_vars[var].append(sim.get_property(var))
 
             # increment steps
             num_steps += 1
@@ -340,6 +344,8 @@ class BasicFlightControlEval:
         self.initial_conditions.append(exact_conditions)
         self.evals.append(cur_eval)
         self.cases.append((alt_case, hdg_case, wind_case))
+        for var in trj_custom_tracking_vars:
+            self.trjs_custom_tracking_vars[var].append(trj_custom_tracking_vars[var])
 
         return exact_conditions, cur_eval
     
@@ -368,7 +374,7 @@ class BasicFlightControlEval:
                     print(f"=== CASE ALTITUDE: {alt_case} HEADING: {hdg_case} WIND: {wind_case} ===")
                     for i in range(num_trials):
                         print(f"--> EXAMPLE {i}")
-                        ics, evals = self.run_single_eval(alt_case, hdg_case, control_subsystem, aircraft=aircraft, wind_case=wind_case)
+                        ics, evals = self.run_single_eval(alt_case, hdg_case, deepcopy(control_subsystem), aircraft=aircraft, wind_case=wind_case)
                         print(f"Average steady state error:{evals["avg alt steady state error"]}")
                         print(f"Time to first conatact: {evals["time to first contact s"]}") 
     
@@ -489,17 +495,17 @@ class BasicFlightControlEval:
         idx = index if index >= 0 else -1
 
         time = self.trjs_time[idx]
-        fig, axs = plt.subplots(4, 1, figsize=(14, 16), sharex=True)
+        fig, axs = plt.subplots(5, 1, figsize=(14, 16), sharex=True)
 
         # First chart: All control commands and deflections
-        axs[0].plot(time, self.trjs_aileron_pos_left[idx], label="Aileron Pos Left")
-        axs[0].plot(time, self.trjs_aileron_pos_right[idx], label="Aileron Pos Right")
-        axs[0].plot(time, self.trjs_aileron_fcs_cmd[idx], label="Aileron FCS Cmd")
-        axs[0].plot(time, self.trjs_aileron_ap_cmd[idx], label="Aileron AP Cmd")
-        # axs[0].plot(time, self.trjs_elevator_fcs_cmd[idx], label="Elevator FCS Cmd")
-        # axs[0].plot(time, self.trjs_elevator_ap_cmd[idx], label="Elevator AP Cmd")
-        # axs[0].plot(time, self.trjs_elevator_pos[idx], label="Elevator Pos Norm")
-        # axs[0].plot(time, self.trjs_elevator_trim[idx], label="Elevator Trim")
+        # axs[0].plot(time, self.trjs_aileron_pos_left[idx], label="Aileron Pos Left")
+        # axs[0].plot(time, self.trjs_aileron_pos_right[idx], label="Aileron Pos Right")
+        # axs[0].plot(time, self.trjs_aileron_fcs_cmd[idx], label="Aileron FCS Cmd")
+        # axs[0].plot(time, self.trjs_aileron_ap_cmd[idx], label="Aileron AP Cmd")
+        axs[0].plot(time, self.trjs_elevator_fcs_cmd[idx], label="Elevator FCS Cmd")
+        axs[0].plot(time, self.trjs_elevator_ap_cmd[idx], label="Elevator AP Cmd")
+        axs[0].plot(time, self.trjs_elevator_pos[idx], label="Elevator Pos Rad")
+        axs[0].plot(time, self.trjs_elevator_trim[idx], label="Elevator Trim")
         # axs[0].plot(time, self.trjs_rudder_fcs_cmd[idx], label="Rudder FCS Cmd")
         # axs[0].plot(time, self.trjs_rudder_fcs_pos[idx], label="Rudder FCS Pos")
         axs[0].set_title("All Control Commands and Deflections")
@@ -535,9 +541,19 @@ class BasicFlightControlEval:
         axs[3].legend()
         axs[3].grid(True, which='both')
 
+        # Custom tracking vars
+        for var in self.trjs_custom_tracking_vars:
+            axs[4].plot(time, self.trjs_custom_tracking_vars[var][idx], label=var)
+            axs[4].set_title(f"{var}")
+            axs[4].set_ylabel(var)
+            axs[4].legend()
+            axs[4].grid(True, which='both')
+
         plt.tight_layout()
         plt.minorticks_on()
         plt.show()
+        
+        
 
 class FGAPControlSubsystem:
     def __init__(self) -> None:

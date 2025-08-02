@@ -43,7 +43,7 @@ class InstructionFollowingScenario(Scenario):
         if self.cur_observation[prp.altitude_agl_ft] < 100:
             self.end_info_scenario["end reason"] = "Altitude decreased below 100 ft"
             return True
-        if self.cur_observation[prp.ias_kts] > 160:
+        if self.cur_observation[prp.cas_kts] > 160:
             self.end_info_scenario["end reason"] = "Exceeded 160kts aka Vne"
             return True
         return False

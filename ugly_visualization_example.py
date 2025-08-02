@@ -86,7 +86,7 @@ plt.legend()
 
 # Airspeed
 plt.figure()
-plt.plot(sim.time_series, [obs[prp.ias_kts] for obs in sim.observations], label='Airspeed (deg)')
+plt.plot(sim.time_series, [obs[prp.cas_kts] for obs in sim.observations], label='Airspeed (deg)')
 plt.xlabel('Simulation Time (s)')
 plt.ylabel('Airspeed (deg)')
 plt.title('Airspeed vs Simulation Time')

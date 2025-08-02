@@ -69,8 +69,8 @@ r_radps = BoundedProperty(
     "velocities/r-rad_sec", "yaw rate [rad/s]", -2 * math.pi, 2 * math.pi
 )
 altitude_rate_fps = Property("velocities/h-dot-fps", "Rate of altitude change [ft/s]")
-ias_kts = BoundedProperty(
-    "velocities/vc-kts", "indicated airspeed [kts]", 0, 400
+cas_kts = BoundedProperty(
+    "velocities/vc-kts", "calibrated airspeed [kts]", 0, 400
 )
 groundspeed_fps = BoundedProperty(
     "velocities/vg-fps", "groundspeed fps", 0, 2000
@@ -88,6 +88,9 @@ aileron_right = BoundedProperty(
 )
 elevator = BoundedProperty(
     "fcs/elevator-pos-norm", "elevator position, normalised", -1, 1
+)
+elevator_rad = BoundedProperty(
+    "fcs/elevator-pos-rad", "elevator position, in radians", -math.pi/2, math.pi/2
 )
 rudder = BoundedProperty(
     "fcs/rudder-pos-norm", "rudder position, normalised", -1, 1

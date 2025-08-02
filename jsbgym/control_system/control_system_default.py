@@ -111,14 +111,14 @@ class ControlInterfaceDefault(ControlInterfaceBase):
             self.eval["avg altitude error"] += err
          
         if self.eval["min airspeed"] ==  None:
-            self.eval["min airspeed"] = observation[prp.ias_kts]
+            self.eval["min airspeed"] = observation[prp.cas_kts]
         else: 
-            self.eval["min airspeed"] = min(self.eval["min airspeed"], observation[prp.ias_kts])
+            self.eval["min airspeed"] = min(self.eval["min airspeed"], observation[prp.cas_kts])
         
         if self.eval["max airspeed"] ==  None:
-            self.eval["max airspeed"] = observation[prp.ias_kts]
+            self.eval["max airspeed"] = observation[prp.cas_kts]
         else: 
-            self.eval["max airspeed"] = max(self.eval["max airspeed"], observation[prp.ias_kts])
+            self.eval["max airspeed"] = max(self.eval["max airspeed"], observation[prp.cas_kts])
         
         self.eval["avg sideslip angle"] += abs(observation[prp.sideslip_deg])
     

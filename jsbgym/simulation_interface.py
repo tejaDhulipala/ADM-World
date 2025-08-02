@@ -30,7 +30,7 @@ class SimulationInterface:
         prp.sideslip_deg,         # sideslip [deg]
 
         # --- Velocities ---
-        prp.ias_kts,              # indicated airspeed [kts]
+        prp.cas_kts,              # indicated airspeed [kts]
         prp.groundspeed_fps,      # groundspeed [ft/s]
         prp.vertical_speed_fps,    # vertical speed [ft/s]
 
@@ -80,6 +80,7 @@ class SimulationInterface:
         additional_obervation_properties: list = [],
         control_agent_interaction_freq: int = 5,
         render_mode: Optional[str] = None,
+        debug_props: bool = False
     ):
         """A Simulation Interface is essentially just a simulation with rendering 
 
@@ -92,6 +93,8 @@ class SimulationInterface:
         :type control_agent_interaction_freq: int, optional
         :param render_mode: human_fg, flightgear, graph_fg, human, graph, other, defaults to None
         :type render_mode: Optional[str], optional
+        :param debug_props: Tells you what properties you have and have not changed on init
+        :type render_mode: bool, optional
         :raises ValueError: _description_
         """
         if control_agent_interaction_freq > self.JSBSIM_DT_HZ:
@@ -113,10 +116,11 @@ class SimulationInterface:
         # Print initial conditions that the user did not modify 
         self.init_conditions[prp.initial_u_fps] = self.aircraft.get_cruise_speed_fps()
         user_keys = set(initial_conditions.keys())
-        init_condition_keys = set(SimulationInterface.default_initial_conditions.keys())
-        print(f"Properties that you did not add (set to default): {init_condition_keys - user_keys}")
-        print(f"Properties changed: {init_condition_keys.intersection(user_keys)}")
-        print(f"Additional properties you added that defaults did not already have {user_keys - init_condition_keys}")
+        if debug_props:
+            init_condition_keys = set(SimulationInterface.default_initial_conditions.keys())
+            print(f"Properties that you did not add (set to default): {init_condition_keys - user_keys}")
+            print(f"Properties changed: {init_condition_keys.intersection(user_keys)}")
+            print(f"Additional properties you added that defaults did not already have {user_keys - init_condition_keys}")
         for prop, val in initial_conditions.items():
             self.init_conditions[prop] = val
         # Add additional observation properties
@@ -216,7 +220,7 @@ class SimulationInterface:
         :param flightgear_blocking: waits for FlightGear to load before
             returning if True, else returns immediately
         """
-        six_pack = (prp.ias_kts, prp.altitude_sl_ft, prp.heading_deg, prp.pitch_rad, prp.pitch_rad, prp.roll_rad)
+        six_pack = (prp.cas_kts, prp.altitude_sl_ft, prp.heading_deg, prp.pitch_rad, prp.pitch_rad, prp.roll_rad)
 
         if self.render_mode == "human":
             if not self.figure_visualiser:

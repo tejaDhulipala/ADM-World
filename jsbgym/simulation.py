@@ -5,6 +5,7 @@ import warnings
 import time
 from mpl_toolkits.mplot3d import Axes3D  # required for 3d plotting
 from typing import Dict, Union
+
 from . import properties as prp
 from .aircraft import Aircraft, c172p
 
@@ -87,19 +88,22 @@ class Simulation:
         jsbsim_name = prop.name if type(prop) in [prp.BoundedProperty, prp.Property] else prop 
         exists = False
         read_only = False
+        write_only = False
         for p in self.jsbsim.get_property_catalog():
             if jsbsim_name in p:
                 exists = True
                 if "(R)" in p:
                     read_only = True
                     warnings.warn("Attempting to set a value to a read-only value")
+                if "W" in p:
+                    write_only = True
                 break
         if not exists:
             warnings.warn(f"Creating a new property called {jsbsim_name}")
         else:
             self.jsbsim[jsbsim_name] = value
             val = self.jsbsim[jsbsim_name]
-            if not read_only and val != value:
+            if not read_only and val != value and not write_only:
                 warnings.warn(f"The value {jsbsim_name} is supposed to be able to be writeable, but its value has not been updated.")
 
     def load_model(self, model_name: str) -> None:
@@ -246,6 +250,7 @@ class Simulation:
 
     def start_engines(self):
         """Sets all engines running."""
+        print("Engines set to running!")
         self[prp.all_engine_running] = -1
 
     def set_throttle_mixture_controls(self, throttle_cmd: float, mixture_cmd: float):
