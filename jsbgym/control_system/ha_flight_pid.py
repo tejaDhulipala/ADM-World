@@ -113,11 +113,11 @@ class FGAPControlSubsystem:
         # Set the throttle and mixture 
         alt_change = des_alt - sim.get_property(prp.altitude_sl_ft)
         if  alt_change >= 150:
-            actions[prp.throttle_cmd] = 1.0
+            actions[prp.throttle_cmd] = ManualPropertiesSubsystem.cessna_rpm_to_throttle_cmd(3000)
         elif alt_change >= -150:
-            actions[prp.throttle_cmd] = 2300 / 2700
+            actions[prp.throttle_cmd] = ManualPropertiesSubsystem.cessna_rpm_to_throttle_cmd(2300)
         else:
-            actions[prp.throttle_cmd] = 1800 / 2700
+            actions[prp.throttle_cmd] = ManualPropertiesSubsystem.cessna_rpm_to_throttle_cmd(1800)
         actions[prp.mixture_cmd] = 0.8
 
         self.steps += 1
@@ -140,8 +140,8 @@ class ManualPropertiesSubsystem:
     
     @staticmethod
     def cessna_rpm_to_throttle_cmd(rpm):
-        throttle_cmds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        rpms = [763, 850, 956, 1076, 1218, 1393, 1623, 1926, 2268, 2513, 2615]
+        throttle_cmds = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
+        rpms = [896, 951, 1008, 1069, 1127, 1188, 1253, 1324, 1403, 1490, 1588, 1697, 1818, 1953, 2103, 2262, 2436, 2611, 2766, 2828, 2845]
         if rpm > rpms[-1]:
             return 1.0
         if rpm < rpms[0]:

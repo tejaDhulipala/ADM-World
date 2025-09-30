@@ -1,0 +1,9 @@
+
+{
+  "thoughts": "ATC has instructed a left turn to heading 030 degrees. Currently at heading 330 degrees, so I need to turn left 60 degrees to reach 030. The aircraft is stable in level flight at 6000 feet MSL. I will maintain current altitude while executing the heading change as instructed.",
+  "control interface": {
+    "heading": 30,
+    "altitude": 6000
+  },
+  "complaints": "None - clear ATC instruction received and aircraft is in good condition to comply"
+}

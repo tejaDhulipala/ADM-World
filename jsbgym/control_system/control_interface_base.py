@@ -40,3 +40,7 @@ class ControlInterfaceBase(ABC):
     @abstractmethod
     def get_eval(self) -> Dict:
         pass
+
+    @abstractmethod
+    def get_instructions(self) -> Dict:
+        pass

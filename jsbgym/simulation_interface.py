@@ -21,41 +21,27 @@ class SimulationInterface:
         "render_fps": 60,
     }
     base_observation_variables = [
-        prp.lat_geod_deg,         # latitude [deg]
-        prp.lng_geoc_deg,         # longitude [deg]
-        prp.altitude_sl_ft,       # altitude MSL [ft]
-        prp.altitude_agl_ft,      # altitude AGL [ft]
-        prp.heading_deg,
-
-        # --- Plane Orientation ---
+        # Six-pack
+        prp.cas_kts,              # indicated airspeed [kts]
         prp.pitch_rad,            # pitch [rad]
         prp.roll_rad,             # roll [rad]
+        prp.altitude_sl_ft,       # altitude MSL [ft]
         prp.sideslip_deg,         # sideslip [deg]
-
-        # --- Velocities ---
-        prp.cas_kts,              # indicated airspeed [kts]
-        prp.groundspeed_fps,      # groundspeed [ft/s]
+        prp.heading_deg,
         prp.vertical_speed_fps,    # vertical speed [ft/s]
 
-        # --- Control state ---
-        prp.aileron_left,
-        prp.aileron_right,
-        prp.elevator,
-        prp.rudder,
+        # GPS
+        prp.lat_geod_deg,         # latitude [deg]
+        prp.lng_geoc_deg,         # longitude [deg]
+        prp.altitude_agl_ft,      # altitude AGL [ft]         
+        prp.groundspeed_fps,      # groundspeed [ft/s]
+    
         # --- Engine state ---
         prp.engine_running,
         prp.throttle,
         prp.mixture_cmd,
         prp.oil_pressure_psi,
         prp.oil_temperature_degF,
-        # --- Autopilot ---
-        prp.ap_hold_straight_and_level,
-        prp.ap_hold_altitude,
-        prp.ap_hold_heading,
-        prp.ap_heading_setpoint,
-        prp.ap_altitude_setpoint,
-        # Time
-        prp.sim_dt
     ]
     default_state_variables = {
         prp.initial_u_fps: 0,
@@ -295,8 +281,8 @@ class SimulationInterface:
             prp.initial_q_radps: self.sim[prp.q_radps],
             prp.initial_r_radps: self.sim[prp.initial_r_radps],
             prp.initial_heading_deg: self.sim[prp.heading_deg],
-            prp.initial_wind_heading: self.sim[prp.initial_wind_heading],
-            prp.initial_wind_speed: self.sim[prp.initial_wind_speed],
+            prp.wind_heading: self.sim[prp.wind_heading],
+            prp.wind_speed: self.sim[prp.wind_speed],
             prp.initial_pitch_deg: self.sim[prp.pitch_rad] / pi * 180,
             prp.initial_roll_deg: self.sim[prp.roll_rad] / pi * 180,
             prp.initial_flight_path: self.sim[prp.flight_path],

@@ -184,8 +184,8 @@ class RPFlightControlEval:
         initial_airspeed_fps = start_airspeed * KTS_TO_FT_PER_S
         print(initial_airspeed_fps)
         initial_conditions = {
-            prp.initial_wind_heading: 0,
-            prp.initial_wind_speed: 0,
+            prp.wind_heading: 0,
+            prp.wind_speed: 0,
             prp.initial_altitude_msl_ft: initial_alt,
             prp.initial_heading_deg: initial_hdg,
             prp.initial_u_fps: initial_airspeed_fps,
@@ -384,8 +384,8 @@ class RPFlightControlEval:
         initial_airspeed_fps = start_airspeed * KTS_TO_FT_PER_S
         print(initial_airspeed_fps)
         initial_conditions = {
-            prp.initial_wind_heading: 0,
-            prp.initial_wind_speed: 0,
+            prp.wind_heading: 0,
+            prp.wind_speed: 0,
             prp.initial_altitude_msl_ft: initial_alt,
             prp.initial_heading_deg: initial_hdg,
             prp.initial_u_fps: initial_airspeed_fps,

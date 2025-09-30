@@ -43,6 +43,7 @@ angle_of_attack = BoundedProperty("aero/alpha-deg", "Angle of attack degrees", -
 flight_path = Property("flight-path/gamma-deg", "flight path in degrees")
 
 # velocities
+true_airspeed = Property("velocities/vtrue-kts", "true airspeed [kts]")
 u_fps = BoundedProperty(
     "velocities/u-fps", "body frame x-axis velocity [ft/s]", -2200, 2200
 )
@@ -80,6 +81,9 @@ groundspeed_fps = BoundedProperty(
 vertical_speed_fps = BoundedProperty(
     "velocities/h-dot-fps", "vertical speed [ft/s]", -10000, 10000
 )
+wind_heading = BoundedProperty("atmosphere/psiw-rad", "direction of wind in radians. north is 0, and increases counterclockwise to 2pi",
+0, 2 * math.pi)
+wind_speed = BoundedProperty("atmosphere/wind-mag-fps", "Wind speed in feet per second", 0, math.inf)
 
 # controls state
 aileron_left = BoundedProperty(
@@ -171,12 +175,12 @@ initial_q_radps = Property("ic/q-rad_sec", "pitch rate [rad/s]")
 initial_r_radps = Property("ic/r-rad_sec", "yaw rate [rad/s]")
 initial_roc_fpm = Property("ic/roc-fpm", "initial rate of climb [ft/min]")
 initial_heading_deg = Property("ic/psi-true-deg", "initial (true) heading [deg]")
-initial_wind_heading = BoundedProperty("atmosphere/psiw-rad", "direction of wind in radians. north is 0, and increases counterclockwise to 2pi",
-0, 2 * math.pi)
-initial_wind_speed = BoundedProperty("atmosphere/wind-mag-fps", "Wind speed in feet per second", 0, math.inf)
 initial_pitch_deg = BoundedProperty("ic/theta-deg", "Pitch angle in degrees", -90, 90)
 initial_roll_deg = BoundedProperty("ic/phi-deg", "Roll angle in degrees", -90, 90)
 initial_flight_path = Property("ic/gamma-deg", "Flight path angle in degrees")
+initial_cas = Property("ic/vc-kts", "initial calibrated airspeed [kts]")
+initial_wind_heading = Property("ic/vw-dir-deg", "initial wind direction [deg]")
+initial_wind_speed = Property("ic/vw-mag-fps", "initial wind speed [kts]")
 
 # Autopilot for cessna 172x
 ap_hold_straight_and_level = Property("ap/attitude_hold", "If set to 1, it rolls wings level")

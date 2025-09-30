@@ -55,6 +55,9 @@ class ControlInterfaceDefault(ControlInterfaceBase):
         self.cur_hdg_change = 0
         self.steps_total = 0
         self.instr_steps = 0
+
+    def get_instructions(self) -> Dict:
+        return self.instructions
     
     def set_instruction(self, instruction, sim: SimulationInterface):
         if self.current_instruction is not None:
@@ -65,6 +68,7 @@ class ControlInterfaceDefault(ControlInterfaceBase):
             self.cur_eval["avg hdg steady state error"] /= self.instr_steps
             self.evals.append(self.cur_eval) 
         self.current_instruction = instruction
+        self.instructions.append(instruction)
         
         # Set variables for the new instruction
         self.cur_eval = self.cur_eval = {
@@ -104,7 +108,7 @@ class ControlInterfaceDefault(ControlInterfaceBase):
             warnings.warn("No altitude hold in instruction, maintaining current altitude")
 
         try:
-            des_hdg = self.current_instruction["control interface"]["heading"]
+            des_hdg = self.current_instruction["control interface"]["heading"] % 360
         except KeyError:
             des_hdg = sim.get_property(prp.heading_deg)
             warnings.warn("No heading hold in instruction, maintaining current heading")
