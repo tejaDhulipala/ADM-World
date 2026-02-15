@@ -1,7 +1,7 @@
 from numpy import clip
 from .ha_flight_pid import HeadingHoldSubsystem, PIDController
-from ..simulation_interface import SimulationInterface
-from .. import properties as prp
+from ...simulation_interface import SimulationInterface
+from ... import properties as prp
 
 class PowerOffControlSubsystemRawPID:
     def __init__(self) -> None:
@@ -51,6 +51,8 @@ class PowerOffControlSubsystemDiffPID:
 
         # Do stuff based on the number of steps
         if self.num_steps == 0:
+            # There is still something weird here where the airplane pitches up and tries to stall for no reason
+            # I think the trim is at fault because when I set the elev cmd to 0, it is still pitching up
             self._last_airspeed = sim.get_property(prp.cas_kts)
             actions["simulation/do_simple_trim"] = 0
         

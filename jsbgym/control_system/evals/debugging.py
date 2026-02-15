@@ -1,7 +1,7 @@
-from .rp_flight_pid import RPPIDControlSubsystem
+from ..subsystems.rp_flight_pid import RPPIDControlSubsystem
 from .rp_flight_evals import RPFlightControlEval
 from .ha_flight_evals import *
-from .ha_flight_pid import *
+from ..subsystems.ha_flight_pid import *
 import numpy as np
 
 basic_flight_evaluator = RPFlightControlEval(custom_tracking_vars=[

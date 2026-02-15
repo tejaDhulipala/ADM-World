@@ -1,8 +1,8 @@
 from copy import deepcopy
 from math import pi
 from typing import Tuple
-from ..simulation_interface import SimulationInterface
-from .. import properties as prp
+from ...simulation_interface import SimulationInterface
+from ... import properties as prp
 from .pid_controller import PIDController
 from numpy import clip, sign
 import matplotlib.pyplot as plt

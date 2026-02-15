@@ -3,10 +3,10 @@ from copy import deepcopy
 from math import pi
 from typing import Dict
 
-from ..simulation_interface import SimulationInterface
-from ..aircraft import *
-from .cases import *
-from .. import properties as prp 
+from ...simulation_interface import SimulationInterface
+from ...aircraft import *
+from ..cases import *
+from ... import properties as prp 
 import random
 
 class RPFlightControlEval:
