@@ -275,7 +275,7 @@ class GraphVisualiser(object):
             self.ax = self.figure.add_subplot(111, projection="3d")
 
         self.alt = sim[prp.altitude_sl_ft]
-        self.long = sim[prp.lng_geoc_deg]
+        self.long = sim[prp.lon_geoc_deg]
         self.lat = sim[prp.lat_geod_deg]
 
         self.ax.set_xlabel("Lattitude")

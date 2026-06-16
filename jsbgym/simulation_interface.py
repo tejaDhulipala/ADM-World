@@ -32,7 +32,7 @@ class SimulationInterface:
 
         # GPS
         prp.lat_geod_deg,         # latitude [deg]
-        prp.lng_geoc_deg,         # longitude [deg]
+        prp.lon_geoc_deg,         # longitude [deg]
         prp.altitude_agl_ft,      # altitude AGL [ft]         
         prp.groundspeed_fps,      # groundspeed [ft/s]
     
@@ -272,7 +272,7 @@ class SimulationInterface:
         ics = {
             prp.initial_altitude_msl_ft: self.sim[prp.altitude_sl_ft],
             prp.initial_terrain_altitude_ft: self.sim[prp.initial_terrain_altitude_ft],
-            prp.initial_longitude_geoc_deg: self.sim[prp.lng_geoc_deg],
+            prp.initial_longitude_geoc_deg: self.sim[prp.lon_geoc_deg],
             prp.initial_latitude_geod_deg: self.sim[prp.lat_geod_deg],
             prp.initial_u_fps: self.sim[prp.u_fps],
             prp.initial_v_fps: self.sim[prp.v_fps],

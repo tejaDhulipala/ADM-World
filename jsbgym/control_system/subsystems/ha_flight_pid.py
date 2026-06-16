@@ -1,5 +1,5 @@
-from ..simulation_interface import SimulationInterface
-from .. import properties as prp
+from ...simulation_interface import SimulationInterface
+from ... import properties as prp
 from numpy import clip
 from .pid_controller import PIDController
 from typing import Dict, Tuple

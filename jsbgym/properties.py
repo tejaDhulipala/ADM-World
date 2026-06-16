@@ -27,10 +27,10 @@ roll_phi_rad = BoundedProperty("attitude/phi-rad", "roll [rad]", -math.pi, math.
 heading_deg = BoundedProperty("attitude/psi-deg", "heading [deg]", 0, 360)
 sideslip_deg = BoundedProperty("aero/beta-deg", "sideslip [deg]", -180, +180)
 lat_geod_deg = BoundedProperty(
-    "position/lat-geod-deg", "geocentric latitude [deg]", -90, 90
+    "position/lat-geod-deg", "geodetic latitude [deg]", -90, 90
 )
-lng_geoc_deg = BoundedProperty(
-    "position/long-gc-deg", "geodesic longitude [deg]", -180, 180
+lon_geoc_deg = BoundedProperty(
+    "position/long-gc-deg", "geocentric longitude [deg]", -180, 180
 )
 dist_travel_m = Property(
     "position/distance-from-start-mag-mt",
@@ -161,7 +161,7 @@ initial_longitude_geoc_deg = Property(
     "ic/long-gc-deg", "initial geocentric longitude [deg]"
 )
 initial_latitude_geod_deg = Property(
-    "ic/lat-geod-deg", "initial geodesic latitude [deg]"
+    "ic/lat-geod-deg", "initial geodetic latitude [deg]"
 )
 initial_u_fps = Property(
     "ic/u-fps", "body frame x-axis velocity; positive forward [ft/s]"
@@ -234,7 +234,7 @@ class GeodeticPosition:
     def from_sim(sim: "simulation.Simulation") -> "GeodeticPosition":
         """Return a GeodeticPosition object with lat and lon from simulation"""
         lat_deg = sim[lat_geod_deg]
-        lon_deg = sim[lng_geoc_deg]
+        lon_deg = sim[lon_geoc_deg]
         return GeodeticPosition(lat_deg, lon_deg)
 
     def __sub__(self, other) -> Vector2:

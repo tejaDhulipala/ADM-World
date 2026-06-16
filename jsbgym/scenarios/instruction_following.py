@@ -56,7 +56,7 @@ class InstructionFollowing(Scenario):
 
     GPS = [# GPS
         prp.lat_geod_deg,         # latitude [deg]
-        prp.lng_geoc_deg,         # longitude [deg]
+        prp.lon_geoc_deg,         # longitude [deg]
         prp.altitude_agl_ft,      # altitude AGL [ft]         
         prp.groundspeed_fps,      # groundspeed [ft/s]
     ]
@@ -248,7 +248,7 @@ class InstructionFollowing(Scenario):
             self.trjs_time.append(self.sim.get_property(prp.sim_time_s))
             self.trjs_alt_msl.append(self.sim.get_property(prp.altitude_sl_ft))
             self.trjs_lat.append(self.sim.get_property(prp.lat_geod_deg))
-            self.trjs_long.append(self.sim.get_property(prp.lng_geoc_deg))
+            self.trjs_long.append(self.sim.get_property(prp.lon_geoc_deg))
             # Add custom tracking variables
             for var in self.trjs_custom_tracking_vars:
                 self.trjs_custom_tracking_vars[var].append(self.sim.get_property(var))

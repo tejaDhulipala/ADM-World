@@ -3,8 +3,8 @@ from typing import Dict, Tuple
 import random
 
 from ..aircraft import c172x
-from .control_interface_base import ControlInterfaceBase
-from ..scenarios.scenario_base import Scenario
+from ..control_system.control_interface_base import ControlInterfaceBase
+from .scenario_base import Scenario
 from ..simulation_interface import SimulationInterface
 from .. import properties as prp
 

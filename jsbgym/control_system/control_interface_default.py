@@ -1,6 +1,6 @@
 from typing import Dict, Tuple
 
-from .ha_flight_pid import FGAPControlSubsystem, ManualPropertiesSubsystem, StraightAndLevelSubsystem
+from .subsystems.ha_flight_pid import FGAPControlSubsystem, ManualPropertiesSubsystem, StraightAndLevelSubsystem
 from ..simulation_interface import SimulationInterface
 from .control_interface_base import ControlInterfaceBase
 from .. import properties as prp
