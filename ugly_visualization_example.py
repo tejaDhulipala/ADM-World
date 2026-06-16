@@ -17,4 +17,4 @@ original_sim.sim[prp.altitude_sl_ft] = 10000  # Change original
 
 # Check copy wasn't affected
 assert copied_sim.sim[prp.altitude_sl_ft] == original_altitude
-print("✓ Independence test passed")
+print("Independence test passed")
