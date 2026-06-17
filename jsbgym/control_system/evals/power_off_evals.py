@@ -490,9 +490,9 @@ class PowerOffEval:
 
         # Custom tracking vars
         for var in self.trjs_custom_tracking_vars:
-            axs[4].plot(time, self.trjs_custom_tracking_vars[var][idx], label=var)
-            axs[4].set_title(f"{var}")
-            axs[4].set_ylabel(var)
+            axs[4].plot(time, self.trjs_custom_tracking_vars[var][idx], label=var.description)
+            axs[4].set_title(var.description)
+            axs[4].set_ylabel(var.description)
             axs[4].legend()
             axs[4].grid(True, which='both')
         
